@@ -318,9 +318,9 @@ fumble_dialog (GimpDrawable *drawable)
   samplerate_box = gtk_combo_box_new_text ();
   int i = 0;
   for(; i < (sizeof(PCM_RATES)/sizeof(gchar*)); i++) {
-    gtk_combo_box_append_text(samplerate_box, PCM_RATES[i]);
+    gtk_combo_box_append_text(GTK_COMBO_BOX(samplerate_box), PCM_RATES[i]);
   }
-  gtk_combo_box_set_active (samplerate_box, pcmconf.samplerate);
+  gtk_combo_box_set_active (GTK_COMBO_BOX(samplerate_box), pcmconf.samplerate);
   gtk_widget_show (samplerate_box);
   gtk_box_pack_start (GTK_BOX (pcm_hbox), samplerate_box, FALSE, FALSE, 6);
 
@@ -332,10 +332,10 @@ fumble_dialog (GimpDrawable *drawable)
   i = 0;
 
   for (; i < (sizeof(PCM_FORMATS) / sizeof(gchar*)); i++) {
-    gtk_combo_box_append_text(format_box, PCM_FORMATS[i]);
+    gtk_combo_box_append_text(GTK_COMBO_BOX(format_box), PCM_FORMATS[i]);
   }
 
-  gtk_combo_box_set_active (format_box, pcmconf.format);
+  gtk_combo_box_set_active (GTK_COMBO_BOX(format_box), pcmconf.format);
   gtk_widget_show (format_box);
   gtk_box_pack_start (GTK_BOX (pcm_hbox), format_box, FALSE, FALSE, 6);
 
@@ -345,7 +345,7 @@ fumble_dialog (GimpDrawable *drawable)
 
   channel_spin_adj = gtk_adjustment_new (1, 1, 32, 1, 1, 0);
   channel_spin = gtk_spin_button_new (GTK_ADJUSTMENT (channel_spin_adj), 1, 0);
-  gtk_spin_button_set_value (channel_spin, pcmconf.channel);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(channel_spin), pcmconf.channel);
   gtk_widget_show (channel_spin);
   gtk_box_pack_start (GTK_BOX (pcm_hbox), channel_spin, FALSE, FALSE, 6);
   gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (channel_spin), TRUE);
@@ -356,7 +356,7 @@ fumble_dialog (GimpDrawable *drawable)
 
   off_spin_adj = gtk_adjustment_new (1, 1, x2 - x1, 1, 1, 0);
   off_spin = gtk_spin_button_new (GTK_ADJUSTMENT (off_spin_adj), 1, 0);
-  gtk_spin_button_set_value (off_spin, pcmconf.off);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (off_spin), pcmconf.off);
   gtk_widget_show (off_spin);
   gtk_box_pack_start (GTK_BOX (play_hbox), off_spin, FALSE, FALSE, 6);
   gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (off_spin), TRUE);
@@ -367,7 +367,7 @@ fumble_dialog (GimpDrawable *drawable)
 
   lines_spin_adj = gtk_adjustment_new (1, 0, x2 - x1, 1, 1, 0);
   lines_spin = gtk_spin_button_new (GTK_ADJUSTMENT (lines_spin_adj), 1, 0);
-  gtk_spin_button_set_value (lines_spin, pcmconf.lines);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(lines_spin), pcmconf.lines);
   gtk_widget_show (lines_spin);
   gtk_box_pack_start (GTK_BOX (play_hbox), lines_spin, FALSE, FALSE, 6);
   gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (lines_spin), TRUE);
@@ -378,7 +378,7 @@ fumble_dialog (GimpDrawable *drawable)
 
   loop_spin_adj = gtk_adjustment_new (1, -1, x2 - x1, 1, 1, 0);
   loop_spin = gtk_spin_button_new (GTK_ADJUSTMENT (loop_spin_adj), 1, 0);
-  gtk_spin_button_set_value (loop_spin, pcmconf.loop);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(loop_spin), pcmconf.loop);
   gtk_widget_show (loop_spin);
   gtk_box_pack_start (GTK_BOX (play_hbox), loop_spin, FALSE, FALSE, 6);
   gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (loop_spin), TRUE);
@@ -413,8 +413,8 @@ fumble_dialog (GimpDrawable *drawable)
 
   run = (gimp_dialog_run (GIMP_DIALOG (dialog)) == GTK_RESPONSE_OK);
 
-  pcmconf.samplerate=gtk_combo_box_get_active (samplerate_box);
-  pcmconf.format=gtk_combo_box_get_active (format_box);
+  pcmconf.samplerate=gtk_combo_box_get_active (GTK_COMBO_BOX(samplerate_box));
+  pcmconf.format=gtk_combo_box_get_active (GTK_COMBO_BOX(format_box));
 
   gtk_widget_destroy (dialog);
 
