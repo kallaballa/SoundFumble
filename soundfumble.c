@@ -93,7 +93,7 @@ query (void)
     "Amir Hassan",
     "Copyright amir@viel-zu.org",
     "2011",
-    "_Sound Fumbl",
+    "_Sound Fumble",
     "RGB*, GRAY*",
     GIMP_PLUGIN,
     G_N_ELEMENTS (args), 0,
@@ -103,17 +103,6 @@ query (void)
                              "<Image>/Filters/Sound");
 }
 
-off_t chunk_pos = 0;
-
-void push_pcm(uint8_t* chunk, uint8_t d) {
-  if(chunk_pos >= chunk_bytes) {
-    chunk_pos = 0;
-    pcm_write(chunk, chunk_size);
-  }
-
-  chunk[ chunk_pos++ ] = d;
-}
-
 static void
 run (const gchar      *name,
      gint              nparams,
@@ -121,7 +110,7 @@ run (const gchar      *name,
      gint             *nreturn_vals,
      GimpParam       **return_vals)
 {
-  fprintf(stderr, "%s\n", "run");
+
   static GimpParam  values[1];
   GimpPDBStatusType status = GIMP_PDB_SUCCESS;
   GimpRunMode       run_mode;
@@ -144,7 +133,6 @@ run (const gchar      *name,
     case GIMP_RUN_INTERACTIVE:
       /* Get options last values if needed */
       gimp_get_data ("plug-in-soundfumble", &pcmconf);
-      fprintf(stderr, "%s\n", "switch");
       /* Display the dialog */
       if (! fumble_dialog (drawable_id))
         return;
@@ -170,9 +158,6 @@ run (const gchar      *name,
 
   fumble (drawable_id);
 
-  gimp_displays_flush ();
-  //gimp_drawable_detach (drawable);
-
   return;
 }
 
@@ -187,7 +172,7 @@ fumble (gint32 drawable_id)
   sprintf(s_channels, "-c%d",  pcmconf.channel);
   sprintf(s_format, "-f%s",  PCM_FORMATS[pcmconf.format]);
 
-  char *argv[] = {"fumble", s_rate, s_channels, s_format};
+  char *argv[] = {"fumble", s_rate, s_channels, s_format };
 
 #ifdef DEBUG
   fprintf(stderr, "%s\n", "fumble");
@@ -202,108 +187,55 @@ fumble (gint32 drawable_id)
   gegl_init (NULL, NULL);
 
   GeglBuffer *buffer;
+  const Babl *buffer_format;
   gint width, height, bpp;
   gint type;
   gint tile_height;
-  guchar *pixel;
-  guchar **pixels;
+  guchar *row;
   gint channels;
-  int i;
 
   /* get the gegl buffer of the specified image */
   buffer = gimp_drawable_get_buffer(drawable_id);
+  buffer_format = gegl_buffer_get_format(buffer);
   width = gegl_buffer_get_width (buffer);
   height = gegl_buffer_get_height (buffer);
   type = gimp_drawable_type (drawable_id);
-  tile_height = gimp_tile_height ();
-  pixel = g_new (guchar, tile_height * width * bpp);
-  pixels = g_new (guchar *, tile_height);
-
-  for (i = 0; i < tile_height; i++)
-    pixels[i] = pixel + width * bpp * i;
+  row = g_new (guchar, width * bpp);
 
 /*
   gimp_drawable_mask_bounds (drawable_id,
-                             &x1, &y1,
-                             &x2, &y2);
+                             &ulx, &uly,
+                             &lrx, &lry);
+*/
+  gint loops=0;
+  gint begin,end;
 
-  channels = gimp_drawable_bpp (drawable_id);
-
-  gimp_pixel_rgn_init (&rgn_in,
-                       drawable,
-                       x1, y1,
-                       x2 - x1, y2 - y1,
-                       FALSE, FALSE);
-
-  row1 = g_new (guchar, channels * (x2 - x1));
-  uint8_t chunk[chunk_bytes];
-
-  int loops=0;
   if (pcmconf.off > 0)
-    y1 = pcmconf.off;
+    begin = pcmconf.off;
 
   if (pcmconf.lines > 0)
-    y2 = y1 + pcmconf.lines;
-;
-  while(pcmconf.loop==-1 || (loops++ <= pcmconf.loop)) {
-    gimp_progress_update(1);
-    for (i = y1; i < y2; i++) {
-      gimp_pixel_rgn_get_row(&rgn_in, row1, x1, MAX(y1, i - 1), x2 - x1);
+    end = pcmconf.lines;
 
-      for (j = x1; j < x2; j++) {
-        for (k = 0; k < channels; k++) {
-          push_pcm(chunk, row1[channels * (j - x1) + k]);
-        }
+  while (pcmconf.loop == -1 || (loops++ <= pcmconf.loop)) {
+    for (begin = 0; begin < height; begin++) {
+      if(begin % (height/100) == 0)
+        gimp_progress_update(((gdouble) begin) / height);
+      gegl_buffer_get(buffer, GEGL_RECTANGLE (0, begin, width, 1), 1.0,
+          buffer_format, row, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
+
+      gint off;
+      gint len = 1024;
+
+      for(off = 0; off < width; off+=len) {
+        pcm_write(row + off, len);
       }
-
-      if (i % 10 == 0)
-        gimp_progress_update((gdouble)(i - y1) / (gdouble)(y2 - y1));
     }
-  }*/
+  }
 
-  uint8_t chunk[chunk_bytes];
-  gint pass;
-  gint num_passes = 1;
-  gint begin, end, num;
-  Babl *buffer_format = gegl_buffer_get_format(buffer);
+  gimp_progress_update(1);
+  g_free (row);
+  g_object_unref (buffer);
 
-  for (pass = 0; pass < num_passes; pass++)
-      {
-        /* This works if you are only writing one row at a time... */
-        for (begin = 0, end = tile_height;
-             begin < height; begin += tile_height, end += tile_height)
-          {
-            if (end > height)
-              end = height;
-
-            num = end - begin;
-
-            gegl_buffer_get (buffer,
-                             GEGL_RECTANGLE (0, begin, width, num),
-                             1.0,
-                             buffer_format,
-                             pixel,
-                             GEGL_AUTO_ROWSTRIDE,
-                             GEGL_ABYSS_NONE);
-
-            int pi;
-
-            for(pi = 0; pi < (tile_height * width * bpp); pi ++) {
-              push_pcm(chunk, pixel[i]);
-            }
-
-            gimp_progress_update (((double) pass + (double) end /
-                                   (double) height) /
-                                  (double) num_passes);
-          }
-      }
-
-//  g_free (row1);
-//  gimp_drawable_flush (drawable);
-  gimp_drawable_merge_shadow (drawable_id, TRUE);
-  gimp_drawable_update (drawable_id,
-                        0, 0,
-                        width, height);
   playback_quit();
 }
 
