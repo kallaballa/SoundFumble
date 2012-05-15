@@ -9,8 +9,8 @@ PCM playback settings are configurable.
 
 ##### Prerequisites
 
-gimp > 2.0
-libasound > 2.0
+* gimp > 2.0
+* libasound > 2.0
 
 ##### Build
 
