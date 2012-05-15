@@ -9,13 +9,13 @@ PCM playback settings are configurable.
 
 ##### Prerequisites
 
-gimp > 2.0
-libasound > 2.0
+* gimp > 2.0
+* libasound2
 
 ##### Build
 
-git clone https://github.com/kallaballa/SoundFumble.git
-cd SoundFumble
-make
-make install
+    git clone https://github.com/kallaballa/SoundFumble.git
+    cd SoundFumble
+    make
+    make install
 
