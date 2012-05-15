@@ -14,7 +14,7 @@ libasound > 2.0
 
 ##### Build
 
-git clone https://kallaballa@github.com/kallaballa/SoundFumble.git
+git clone https://github.com/kallaballa/SoundFumble.git
 cd SoundFumble
 make
 make install
