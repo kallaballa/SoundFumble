@@ -189,9 +189,11 @@ fumble (GimpDrawable *drawable)
   sprintf(s_channels, "-c%d",  pcmconf.channel);
   sprintf(s_format, "-f%s",  PCM_FORMATS[pcmconf.format]);
 
+#ifdef DEBUG
   fprintf(stderr, "samplerate: %s\n",  s_rate);
   fprintf(stderr, "channels: %s\n",  s_channels);
   fprintf(stderr, "format: %s\n",  s_format);
+#endif
 
   char *argv[] = {"fumble", s_rate, s_channels, s_format};
   playback_init(4, argv);
