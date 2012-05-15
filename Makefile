@@ -15,3 +15,7 @@ clean: soundfumble
 
 install: soundfumble
 	gimptool-2.0 --install-bin soundfumble
+
+uninstall: soundfumble
+	gimptool-2.0 --uninstall-bin soundfumble
+
