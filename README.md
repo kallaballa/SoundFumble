@@ -14,8 +14,8 @@ PCM playback settings are configurable.
 
 ##### Build
 
-git clone https://github.com/kallaballa/SoundFumble.git
-cd SoundFumble
-make
-make install
+* git clone https://github.com/kallaballa/SoundFumble.git
+* cd SoundFumble
+* make
+* make install
 
