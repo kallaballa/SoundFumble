@@ -17,9 +17,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #include <gtk-2.0/gtk/gtk.h>
+
 #include <libgimp/gimp.h>
 #include <libgimp/gimpui.h>
+
 #include "aplay/aplay.h"
+
+#include <gegl.h>
+#include <gegl-types.h>
+#include <gegl-buffer-iterator.h>
 
 typedef struct
 {
@@ -40,8 +46,8 @@ static void run   (const gchar      *name,
                    const GimpParam  *param,
                    gint             *nreturn_vals,
                    GimpParam       **return_vals);
-static void fumble  (GimpDrawable     *drawable);
-static gboolean fumble_dialog (GimpDrawable *drawable);
+static void fumble  (gint32 drawable_id);
+static gboolean fumble_dialog (gint32 drawable_id);
 
 static PcmConfig pcmconf =
 {
@@ -87,7 +93,7 @@ query (void)
     "Amir Hassan",
     "Copyright amir@viel-zu.org",
     "2011",
-    "_Sound Fumble",
+    "_Sound Fumbl",
     "RGB*, GRAY*",
     GIMP_PLUGIN,
     G_N_ELEMENTS (args), 0,
@@ -119,7 +125,8 @@ run (const gchar      *name,
   static GimpParam  values[1];
   GimpPDBStatusType status = GIMP_PDB_SUCCESS;
   GimpRunMode       run_mode;
-  GimpDrawable     *drawable;
+  gint32 drawable_id = param[2].data.d_drawable;
+
 
   /* Setting mandatory output values */
   *nreturn_vals = 1;
@@ -132,9 +139,6 @@ run (const gchar      *name,
    * we are in NONINTERACTIVE mode */
   run_mode = param[0].data.d_int32;
 
-  /*  Get the specified drawable  */
-  drawable = gimp_drawable_get (param[2].data.d_drawable);
-
   switch (run_mode)
   {
     case GIMP_RUN_INTERACTIVE:
@@ -142,7 +146,7 @@ run (const gchar      *name,
       gimp_get_data ("plug-in-soundfumble", &pcmconf);
       fprintf(stderr, "%s\n", "switch");
       /* Display the dialog */
-      if (! fumble_dialog (drawable))
+      if (! fumble_dialog (drawable_id))
         return;
       break;
 
@@ -164,23 +168,17 @@ run (const gchar      *name,
   if (run_mode == GIMP_RUN_INTERACTIVE)
     gimp_set_data ("plug-in-soundfumble", &pcmconf, sizeof (PcmConfig));
 
-  fumble (drawable);
+  fumble (drawable_id);
 
   gimp_displays_flush ();
-  gimp_drawable_detach (drawable);
+  //gimp_drawable_detach (drawable);
 
   return;
 }
 
 static void
-fumble (GimpDrawable *drawable)
+fumble (gint32 drawable_id)
 {
-  fprintf(stderr, "%s\n", "fumble");
-  gint         i, j, k, channels;
-  gint         x1, y1, x2, y2;
-  GimpPixelRgn rgn_in;
-  guchar      *row1;
-
   char s_rate[8];
   char s_channels[2];
   char s_format[256];
@@ -189,18 +187,47 @@ fumble (GimpDrawable *drawable)
   sprintf(s_channels, "-c%d",  pcmconf.channel);
   sprintf(s_format, "-f%s",  PCM_FORMATS[pcmconf.format]);
 
+  char *argv[] = {"fumble", s_rate, s_channels, s_format};
+
+#ifdef DEBUG
+  fprintf(stderr, "%s\n", "fumble");
   fprintf(stderr, "samplerate: %s\n",  s_rate);
   fprintf(stderr, "channels: %s\n",  s_channels);
   fprintf(stderr, "format: %s\n",  s_format);
+#endif
 
-  char *argv[] = {"fumble", s_rate, s_channels, s_format};
   playback_init(4, argv);
   playback_open();
 
-  gimp_drawable_mask_bounds (drawable->drawable_id,
+  gegl_init (NULL, NULL);
+
+  GeglBuffer *buffer;
+  gint width, height, bpp;
+  gint type;
+  gint tile_height;
+  guchar *pixel;
+  guchar **pixels;
+  gint channels;
+  int i;
+
+  /* get the gegl buffer of the specified image */
+  buffer = gimp_drawable_get_buffer(drawable_id);
+  width = gegl_buffer_get_width (buffer);
+  height = gegl_buffer_get_height (buffer);
+  type = gimp_drawable_type (drawable_id);
+  tile_height = gimp_tile_height ();
+  pixel = g_new (guchar, tile_height * width * bpp);
+  pixels = g_new (guchar *, tile_height);
+
+  for (i = 0; i < tile_height; i++)
+    pixels[i] = pixel + width * bpp * i;
+
+/*
+  gimp_drawable_mask_bounds (drawable_id,
                              &x1, &y1,
                              &x2, &y2);
-  channels = gimp_drawable_bpp (drawable->drawable_id);
+
+  channels = gimp_drawable_bpp (drawable_id);
 
   gimp_pixel_rgn_init (&rgn_in,
                        drawable,
@@ -232,19 +259,56 @@ fumble (GimpDrawable *drawable)
       if (i % 10 == 0)
         gimp_progress_update((gdouble)(i - y1) / (gdouble)(y2 - y1));
     }
-  }
-  g_free (row1);
+  }*/
 
-  gimp_drawable_flush (drawable);
-  gimp_drawable_merge_shadow (drawable->drawable_id, TRUE);
-  gimp_drawable_update (drawable->drawable_id,
-                        x1, y1,
-                        x2 - x1, y2 - y1);
+  uint8_t chunk[chunk_bytes];
+  gint pass;
+  gint num_passes = 1;
+  gint begin, end, num;
+  Babl *buffer_format = gegl_buffer_get_format(buffer);
+
+  for (pass = 0; pass < num_passes; pass++)
+      {
+        /* This works if you are only writing one row at a time... */
+        for (begin = 0, end = tile_height;
+             begin < height; begin += tile_height, end += tile_height)
+          {
+            if (end > height)
+              end = height;
+
+            num = end - begin;
+
+            gegl_buffer_get (buffer,
+                             GEGL_RECTANGLE (0, begin, width, num),
+                             1.0,
+                             buffer_format,
+                             pixel,
+                             GEGL_AUTO_ROWSTRIDE,
+                             GEGL_ABYSS_NONE);
+
+            int pi;
+
+            for(pi = 0; pi < (tile_height * width * bpp); pi ++) {
+              push_pcm(chunk, pixel[i]);
+            }
+
+            gimp_progress_update (((double) pass + (double) end /
+                                   (double) height) /
+                                  (double) num_passes);
+          }
+      }
+
+//  g_free (row1);
+//  gimp_drawable_flush (drawable);
+  gimp_drawable_merge_shadow (drawable_id, TRUE);
+  gimp_drawable_update (drawable_id,
+                        0, 0,
+                        width, height);
   playback_quit();
 }
 
 static gboolean
-fumble_dialog (GimpDrawable *drawable)
+fumble_dialog (gint32 drawable_id)
 {
 
   GtkWidget *dialog;
@@ -280,7 +344,7 @@ fumble_dialog (GimpDrawable *drawable)
   gimp_ui_init ("SoundFumble", FALSE);
 
   gint         x1, y1, x2, y2;
-  gimp_drawable_mask_bounds (drawable->drawable_id,
+  gimp_drawable_mask_bounds (drawable_id,
                              &x1, &y1,
                              &x2, &y2);
 
