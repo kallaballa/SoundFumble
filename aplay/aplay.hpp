@@ -44,9 +44,7 @@
 #include <sys/uio.h>
 #include <sys/time.h>
 #include <sys/signal.h>
-#include "aconfig.h"
 #include "formats.h"
-#include "version.h"
 
 #ifndef LLONG_MAX
 #define LLONG_MAX    9223372036854775807LL
@@ -103,7 +101,7 @@ static size_t chunk_bytes;
 
 
 static int fd = -1;
-static off_t pbrec_count = LLONG_MAX;
+static off_t pbrec_count = LONG_MAX;
 static off_t fdcount;
 static int vocmajor, vocminor;
 
@@ -272,11 +270,6 @@ static void pcm_list(void)
 	snd_output_close(out);
 }
 
-static void version(void)
-{
-	fprintf(stderr, "%s: version " SND_UTIL_VERSION_STR " by Jaroslav Kysela <perex@suse.cz>\n", command);
-}
-
 static void signal_handler(int sig)
 {
 	if (!quiet_mode)
@@ -351,9 +344,6 @@ static int playback_init(int argc, char *argv[])
 		switch (c) {
 		case 'h':
 			usage(command);
-			return 0;
-		case OPT_VERSION:
-			version();
 			return 0;
 		case 'n':
 			do_names_list = 1;
@@ -546,7 +536,6 @@ static void set_params(void)
 	snd_pcm_uframes_t buffer_size;
 	int err;
 	size_t n;
-	snd_pcm_uframes_t xfer_align;
 	unsigned int rate;
 	snd_pcm_uframes_t start_threshold, stop_threshold;
 	snd_pcm_hw_params_alloca(&params);
@@ -638,15 +627,7 @@ static void set_params(void)
 		exit(EXIT_FAILURE);
 	}
 	snd_pcm_sw_params_current(handle, swparams);
-	err = snd_pcm_sw_params_get_xfer_align(swparams, &xfer_align);
-	if (err < 0) {
-		error("Unable to obtain xfer align\n");
-		exit(EXIT_FAILURE);
-	}
-	if (sleep_min)
-		xfer_align = 1;
-	err = snd_pcm_sw_params_set_sleep_min(handle, swparams,
-					      sleep_min);
+
 	assert(err >= 0);
 	if (avail_min < 0)
 		n = chunk_size;
@@ -655,7 +636,7 @@ static void set_params(void)
 	err = snd_pcm_sw_params_set_avail_min(handle, swparams, n);
 
 	/* round up to closest transfer boundary */
-	n = (buffer_size / xfer_align) * xfer_align;
+	n = buffer_size;
 	if (start_delay <= 0) {
 		start_threshold = n + (double) rate * start_delay / 1000000;
 	} else
@@ -673,7 +654,6 @@ static void set_params(void)
 	err = snd_pcm_sw_params_set_stop_threshold(handle, swparams, stop_threshold);
 	assert(err >= 0);
 
-	err = snd_pcm_sw_params_set_xfer_align(handle, swparams, xfer_align);
 	assert(err >= 0);
 
 	if (snd_pcm_sw_params(handle, swparams) < 0) {
@@ -691,18 +671,6 @@ static void set_params(void)
 	}
 	// fprintf(stderr, "real chunk_size = %i, frags = %i, total = %i\n", chunk_size, setup.buf.block.frags, setup.buf.block.frags * chunk_size);
 }
-
-#ifndef timersub
-#define	timersub(a, b, result) \
-do { \
-	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
-	(result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
-	if ((result)->tv_usec < 0) { \
-		--(result)->tv_sec; \
-		(result)->tv_usec += 1000000; \
-	} \
-} while (0)
-#endif
 
 /* I/O error handler */
 static void xrun(void)
