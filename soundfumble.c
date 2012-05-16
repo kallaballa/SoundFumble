@@ -115,7 +115,6 @@ run (const gchar      *name,
      gint             *nreturn_vals,
      GimpParam       **return_vals)
 {
-  fprintf(stderr, "%s\n", "run");
   static GimpParam  values[1];
   GimpPDBStatusType status = GIMP_PDB_SUCCESS;
   GimpRunMode       run_mode;
@@ -140,7 +139,6 @@ run (const gchar      *name,
     case GIMP_RUN_INTERACTIVE:
       /* Get options last values if needed */
       gimp_get_data ("plug-in-soundfumble", &pcmconf);
-      fprintf(stderr, "%s\n", "switch");
       /* Display the dialog */
       if (! fumble_dialog (drawable))
         return;
@@ -175,7 +173,6 @@ run (const gchar      *name,
 static void
 fumble (GimpDrawable *drawable)
 {
-  fprintf(stderr, "%s\n", "fumble");
   gint         i, j, k, channels;
   gint         x1, y1, x2, y2;
   GimpPixelRgn rgn_in;
