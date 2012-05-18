@@ -3,10 +3,10 @@ CFLAGS = $(shell gimptool-2.0 --cflags)
 LDFLAGS = $(shell gimptool-2.0 --libs) $(shell pkg-config --libs alsa)
 
 soundfumble: soundfumble.o
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) soundfumble.o
+	$(CC) soundfumble.o -o $@ $(CFLAGS) $(LDFLAGS)
 
 .c.o:
-	$(CC) $(CFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(LDFLAGS) -c $<
 
 soundfumble.c: soundfumble.h
 
