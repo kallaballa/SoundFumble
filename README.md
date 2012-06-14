@@ -4,7 +4,7 @@ SoundFumble
 SoundFumble is a gimp plugin that renders images to sound.
 It does it by writing the image directly to an alsa device. 
 
-Live demo at the libre graphics meetings 2012: http://www.youtube.com/watch?feature=player_embedded&v=teNkaSs_OmY
+Live demo at the libre graphics meetings 2012: http://www.youtube.com/watch?v=teNkaSs_OmY
 
 #### Install
 
